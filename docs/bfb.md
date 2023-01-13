@@ -24,6 +24,15 @@ MQTT Topic: selfupdate/desiredstate
 }
 ```
 
+## Current state request
+This message is a trigger to send back version of installed OS. Can be received at any point of time.
+```
+{
+    "activityId": "",
+    "timestamp": 123456789
+}
+```
+
 ## Desired state
 
 This message indicates that SUA needs to perform an update operation.
