@@ -69,6 +69,11 @@ MQTT communication is done via 3 MQTT topics:
 |------|  -------- | ----------- |
 | selfupdate/currentstate | OUT | This message is being sent once, on SUA start. It contains information about currently installed OS version.
 
+## selfupdate/currentstate/get
+| Topic| Direction | Description |
+|------|  -------- | ----------- |
+| selfupdate/currentstate/get | IN | This message can be received at any point of time. Indicates that SUA should send back version of installed OS as current state.
+
 ## selfupdate/desiredstatefeedback
 | Topic| Direction | Description |
 |------|  -------- | ----------- |
