@@ -38,18 +38,17 @@ include_directories(
 )
 
 file(GLOB_RECURSE SRCS *.cpp *.h)
-list(FILTER SRCS EXCLUDE REGEX "main.cpp" )
+#list(FILTER SRCS EXCLUDE REGEX "main.cpp" )
 list(APPEND SRCS ${CMAKE_CURRENT_BINARY_DIR}/version.cpp)
 
-add_library(sua SHARED ${SRCS})
+#add_library(sua STATIC ${SRCS})
 add_executable(${PROJECT_NAME} ${SRCS} main.cpp)
 
 link_directories(${CMAKE_BINARY_DIR}/3rdparty/curl/lib)
 
 target_link_libraries(${PROJECT_NAME}
-    curl_lib
-    paho-mqttpp3
-    paho-mqtt3a
+    paho-mqttpp3-static
+    paho-mqtt3a-static
     mini-yaml
     gio_lib
     gobject_lib
@@ -61,7 +60,7 @@ target_link_libraries(${PROJECT_NAME}
     ${SUA_PLATFORM_LIBS}
     ssl_lib
     crypto_lib
-    sua
+		#    sua
 )
 
 if(SUA_BUILD_TESTS)
@@ -69,11 +68,11 @@ if(SUA_BUILD_TESTS)
 endif()
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-install(TARGETS sua LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+#install(TARGETS sua LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
-install(
-    FILES
-        ${CMAKE_BINARY_DIR}/lib/libssl.so.3
-        ${CMAKE_BINARY_DIR}/lib/libcrypto.so.3
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-)
+#install(
+#    FILES
+#        ${CMAKE_BINARY_DIR}/lib/libssl.so.3
+#        ${CMAKE_BINARY_DIR}/lib/libcrypto.so.3
+#    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+#)

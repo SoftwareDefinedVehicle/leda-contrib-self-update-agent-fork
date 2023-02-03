@@ -7,7 +7,7 @@ cd build_amd64/3rdparty/openssl
 	--prefix=$rootdir/build_amd64 \
 	--openssldir=$rootdir/build_amd64 \
 	--libdir=lib \
-	shared \
+	no-shared \
 	-Wl,-rpath=$rootdir/build_amd64/lib \
 	-Wl,--enable-new-dtags
 make install_sw
