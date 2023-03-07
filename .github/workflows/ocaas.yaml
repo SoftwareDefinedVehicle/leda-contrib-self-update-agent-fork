@@ -51,6 +51,8 @@ jobs:
           BLOCKING: true
           REPORT_FILES: DISCLOSURE_DOCUMENT_PDF,VULNERABILITY_REPORT_PDF,SCAN_REPORT_WEB_APP_HTML
           OUTPUT_DIR: reports/
+          FOSSID_SERVER: CS
+          FOSSID_PROJECT_NAME: SDV_Kastro_Standard
       - name: Upload reports
         id: upload
         uses: actions/upload-artifact@v3
