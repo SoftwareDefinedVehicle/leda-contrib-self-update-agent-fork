@@ -49,6 +49,12 @@ namespace sua {
         }
 
         Logger::info("Bundle version unchanged");
+
+        if(ctx.forceInstall) {
+            Logger::warning("Despide of equal version installation is forced due to configuration.");
+            return FotaEvent::BundleVersionOK;
+        }
+
         send(ctx, IMqttProcessor::TOPIC_FEEDBACK, "skipped");
         return FotaEvent::BundleVersionUnchanged;
     }

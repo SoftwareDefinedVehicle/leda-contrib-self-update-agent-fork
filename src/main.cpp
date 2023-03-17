@@ -47,6 +47,7 @@ Options:
 -i, --installer set install method 'download' to download update bundles and let Rauc install them,
                 'stream' to let Rauc install bundles directly from HTTP-server,
                 or 'dummy' for neither download nor installation (default is 'download')
+-f              forced installation even versions don't differ
 -p, --path      path where downloaded update bundles will be stored (default is '/data/selfupdates')
 -s, --server    MQTT broker server to connect (default is 'tcp://mosquitto:1883')
                 (has precedence over SUA_SERVER environment variable)
@@ -59,6 +60,7 @@ int main(int argc, char* argv[])
     std::string api{"bfb"};
     std::string installer{"download"};
     std::string hostPathToSelfupdateDir{"/data/selfupdates"};
+    bool        forceInstall = false;
 
     const char * env_server = std::getenv("SUA_SERVER");
     if(env_server) {
@@ -123,6 +125,11 @@ int main(int argc, char* argv[])
                     return 1;
                 }
                 installer = argValue;
+                continue;
+            }
+
+            if("-f" == opt) {
+                forceInstall = true;
                 continue;
             }
 
@@ -212,6 +219,7 @@ int main(int argc, char* argv[])
     ctx.messagingProtocol = protocol;
     ctx.updatesDirectory  = hostPathToSelfupdateDir;
     ctx.bundleChecker     = std::make_shared<sua::BundleChecker>();
+    ctx.forceInstall      = forceInstall;
 
     sua::Logger::info("SUA build number       : '{}'", SUA_BUILD_NUMBER );
     sua::Logger::info("SUA commit hash        : '{}'", SUA_COMMIT_HASH  );
@@ -219,6 +227,9 @@ int main(int argc, char* argv[])
     sua::Logger::info("Communication protocol : '{}'", api);
     sua::Logger::info("Install method         : '{}'", installer);
     sua::Logger::info("Updates directory      : '{}'", ctx.updatesDirectory);
+    if(ctx.forceInstall) {
+        sua::Logger::warning("forced installation - no skipping if bundle version is unchanged");
+    }
 
     sua.init();
     sua.start(conf);
