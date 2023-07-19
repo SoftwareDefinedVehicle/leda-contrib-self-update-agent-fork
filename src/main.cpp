@@ -27,6 +27,7 @@
 #include "Logger.h"
 #include "version.h"
 
+#include <csignal>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -60,8 +61,27 @@ Options:
 -v, --version      display version (Git hash and build number) used to build SUA and exit
 )";
 
+void sig_term(int /*signal*/)
+{
+    std::cout << "SIGTERM\n";
+}
+
+void sig_int(int /*signal*/)
+{
+    std::cout << "SIGINT\n";
+}
+
+void sig_abrt(int /*signal*/)
+{
+    std::cout << "SIGABRT\n";
+}
+
 int main(int argc, char* argv[])
 {
+    std::signal(SIGTERM, sig_term);
+    std::signal(SIGINT,  sig_int );
+    std::signal(SIGABRT, sig_abrt);
+
     std::string server                  = SUA_DEFAULT_MQTT_SERVER;
     std::string installer               = SUA_DEFAULT_MODE;
     std::string hostPathToSelfupdateDir = SUA_DEFAULT_TEMP_DIRECTORY;
