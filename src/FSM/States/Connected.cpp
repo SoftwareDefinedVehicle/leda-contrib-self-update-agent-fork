@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -32,24 +32,24 @@ namespace sua {
 
     void Connected::onEnter(Context& ctx)
     {
-        send(ctx, IMqttProcessor::TOPIC_STATE, "systemVersion", true);
+        send(ctx, IMqttProcessor::TOPIC_STATE, MqttMessage::SystemVersion, true);
     }
 
     FotaEvent Connected::body(Context& ctx)
     {
-        Logger::info("Bundle version (slot): '{}'", ctx.currentState.version);
-        Logger::info("Bundle version (spec): '{}'", ctx.desiredState.bundleVersion);
-        send(ctx, IMqttProcessor::TOPIC_FEEDBACK, "identifying");
+        Logger::info("System version, installed: '{}'", ctx.currentState.version);
+
+        send(ctx, IMqttProcessor::TOPIC_FEEDBACK, MqttMessage::Identifying);
 
         if(ctx.bundleChecker->isUpdateBundleVersionDifferent(ctx.desiredState.bundleVersion,
                                                              ctx.installerAgent)) {
-            Logger::info("Bundle and system versions differ");
-            send(ctx, IMqttProcessor::TOPIC_FEEDBACK, "identified");
+            Logger::info("Bundle file and slot versions differ.");
+            send(ctx, IMqttProcessor::TOPIC_FEEDBACK, MqttMessage::Identified);
             return FotaEvent::BundleVersionOK;
         }
 
         Logger::info("Bundle version unchanged");
-        send(ctx, IMqttProcessor::TOPIC_FEEDBACK, "skipped");
+        send(ctx, IMqttProcessor::TOPIC_FEEDBACK, MqttMessage::Skipped);
         return FotaEvent::BundleVersionUnchanged;
     }
 

@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 //    SPDX-License-Identifier: Apache-2.0
 
 #include "Download/Downloader.h"
+#include "Context.h"
 #include "Logger.h"
 #include "Patterns/Dispatcher.h"
 #include "TechCodes.h"
@@ -23,6 +24,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <tuple>
+
 #include <dirent.h>
 #include <curl/curl.h>
 #include <sys/stat.h>
@@ -30,13 +33,10 @@
 namespace {
 
     const int        HTTP_OK                     = 200;
-    const char       FILE_DIR[FILENAME_MAX]      = "/RaucUpdate";
-    const char       FILE_PATH[FILENAME_MAX]     = "/RaucUpdate/temp_file";
+    char             FILE_DIR[FILENAME_MAX]      = "/RaucUpdate";
+    char             FILE_PATH[FILENAME_MAX]     = "/RaucUpdate/temp_file";
     bool             cancelled                   = false;
     int              progressNotificationLimiter = 0;
-
-    size_t        write_data(void* ptr, size_t size, size_t nmemb, FILE* stream);
-    sua::TechCode download(const char* url);
 
     struct progress {
         char*  unused;
@@ -84,18 +84,49 @@ namespace {
         return written;
     }
 
-    sua::TechCode download(const char* url)
-    {
-        CURLcode gres = curl_global_init(CURL_GLOBAL_ALL);
-        if(gres != 0) {
-            sua::Logger::critical("curl_global_init failed with code = {}", gres);
-            return sua::TechCode::DownloadFailed;
+    class CurlGlobalGuard {
+    public:
+        CURLcode init() {
+            return curl_global_init(CURL_GLOBAL_ALL);
         }
 
-        CURL* easy_handle = curl_easy_init();
-        if(!easy_handle) {
+        ~CurlGlobalGuard() {
+            curl_global_cleanup();
+        }
+    };
+
+    class CurlEasyHandleGuard {
+    public:
+        CURL * init() {
+            _handle = curl_easy_init();
+            return _handle;
+        }
+
+        ~CurlEasyHandleGuard() {
+            if(_handle) {
+                curl_easy_cleanup(_handle);
+            }
+        }
+
+    private:
+        CURL * _handle = nullptr;
+    };
+
+    sua::DownloadResult download(const std::string & caPath, const std::string & caFile, const char* url)
+    {
+        CurlGlobalGuard global_guard;
+        auto init_status = global_guard.init();
+        if(init_status != 0) {
+            sua::Logger::critical("curl_global_init failed with code = {}", init_status);
+            return std::make_tuple(sua::TechCode::DownloadFailed, "libcurl init failed");
+        }
+
+        CurlEasyHandleGuard easy_guard;
+        auto h = easy_guard.init();
+
+        if(!h) {
             sua::Logger::critical("curl_easy_init failed");
-            return sua::TechCode::DownloadFailed;
+            return std::make_tuple(sua::TechCode::DownloadFailed, "libcurl init failed");
         }
 
         DIR* dir = opendir(FILE_DIR);
@@ -105,7 +136,7 @@ namespace {
             const int dir_err = mkdir(FILE_DIR, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
             if(dir_err) {
                 sua::Logger::critical("Issue with creating a dir {}, error: {}", FILE_DIR, dir_err);
-                return sua::TechCode::DownloadFailed;
+                return std::make_tuple(sua::TechCode::DownloadFailed, "temporary file folder could not be created");
             }
         }
 
@@ -113,34 +144,42 @@ namespace {
         FILE* fp = fopen(FILE_PATH, "wb");
         if(!fp) {
             sua::Logger::critical("Failed to open '{}' for writing", FILE_PATH);
-            return sua::TechCode::DownloadFailed;
+            return std::make_tuple(sua::TechCode::DownloadFailed, "temporary file could not be opened for writing");
         }
 
-        curl_easy_setopt(easy_handle, CURLOPT_URL, url);
-        curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &response_code);
-        curl_easy_setopt(easy_handle, CURLOPT_WRITEFUNCTION, write_data);
-        curl_easy_setopt(easy_handle, CURLOPT_WRITEDATA, fp);
-        curl_easy_setopt(easy_handle, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(easy_handle, CURLOPT_PROGRESSDATA, &data);
-        curl_easy_setopt(easy_handle, CURLOPT_PROGRESSFUNCTION, progress_callback);
-        curl_easy_setopt(easy_handle, CURLOPT_NOPROGRESS, 0);
-        CURLcode res = curl_easy_perform(easy_handle);
+        curl_easy_setopt(h, CURLOPT_URL, url);
+        curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &response_code);
+        if(!caFile.empty()) {
+            curl_easy_setopt(h, CURLOPT_CAINFO, caFile.c_str());
+        } else {
+            curl_easy_setopt(h, CURLOPT_CAPATH, caPath.c_str());
+        }
+        curl_easy_setopt(h, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(h, CURLOPT_SSL_VERIFYHOST, 2L);
+        curl_easy_setopt(h, CURLOPT_WRITEFUNCTION, write_data);
+        curl_easy_setopt(h, CURLOPT_WRITEDATA, fp);
+        curl_easy_setopt(h, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(h, CURLOPT_PROGRESSDATA, &data);
+        curl_easy_setopt(h, CURLOPT_PROGRESSFUNCTION, progress_callback);
+        curl_easy_setopt(h, CURLOPT_NOPROGRESS, 0);
+        curl_easy_setopt(h, CURLOPT_PROTOCOLS_STR, "https");
+        CURLcode res = curl_easy_perform(h);
 
-        sua::Logger::debug("curl_easy_perform ended with code = {}", res);
+        sua::Logger::debug("curl_easy_perform ended with code = '{}'", res);
 
         long http_code = 0;
-        curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &http_code);
-        curl_easy_cleanup(easy_handle);
-        curl_global_cleanup();
+        curl_easy_getinfo(h, CURLINFO_RESPONSE_CODE, &http_code);
         fclose(fp);
         progressNotificationLimiter = 0;
 
         sua::Logger::debug("CURLINFO_RESPONSE_CODE = {}", http_code);
         if(http_code != 200) {
-            return sua::TechCode::DownloadFailed;
+            auto e = curl_easy_strerror(res);
+            sua::Logger::error(e);
+            return std::make_tuple(sua::TechCode::DownloadFailed, e);
         }
 
-        return sua::TechCode::OK;
+        return std::make_tuple(sua::TechCode::OK, "");
     }
 
 } // namespace
@@ -149,9 +188,17 @@ namespace sua {
 
     const std::string Downloader::EVENT_DOWNLOADING = "Downloader/Downloading";
 
-    TechCode Downloader::start(const std::string & input)
+    Downloader::Downloader(Context & context)
+        : _context(context)
     {
-        return download(input.c_str());
+        const std::string filepath = _context.updatesDirectory + _context.tempFileName;
+        strncpy(FILE_DIR, _context.updatesDirectory.c_str(), FILENAME_MAX - 1);
+        strncpy(FILE_PATH, filepath.c_str(), FILENAME_MAX - 1);
+    }
+
+    DownloadResult Downloader::start(const std::string & input)
+    {
+        return download(_context.caDirectory, _context.caFilepath, input.c_str());
     }
 
 } // namespace sua

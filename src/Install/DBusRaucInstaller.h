@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@
 
 #include "Install/IRaucInstaller.h"
 
+#include <atomic>
 #include <gio/gio.h>
 
 namespace sua {
@@ -28,19 +29,43 @@ namespace sua {
         DBusRaucInstaller();
         ~DBusRaucInstaller();
 
+        TechCode    activateBooted() override;
+        TechCode    activateOther() override;
         TechCode    installBundle(const std::string& input) override;
+        int32_t     getProgressPollInterval() const override;
         int32_t     getInstallProgress() override;
-        std::string getBundleVersion() override;
+        SlotStatus  getSlotStatus() override;
+        std::string getBootedVersion() override;
         std::string getBundleVersion(const std::string& input) override;
+        std::string getLastError() override;
+
+        bool installing() override;
+        bool succeeded() override;
+
+        void setInstalling(bool value);
+        void setSuccess(bool value);
 
     private:
         GDBusConnection* connection{nullptr};
+        GMainLoop* loop{nullptr};
+
+        guint            signalSubscriptionIdProperties;
+        guint            signalSubscriptionIdCompleted;
+
+        std::atomic_bool is_installing;
+        std::atomic_bool is_succeeded;
 
         void        setupDBusRaucConnection();
-        TechCode    installDBusRaucBundle(const std::string& bundleName);
-        int32_t     getDBusRaucInstallProgress() const;
-        std::string getDBusRaucBundleVersion() const;
+        void        subscribeDBusSignals();
+        void        unsubscribeDBusSignals();
+
+        TechCode    callDBusRaucMark(const std::string& identifier, const std::string& state);
+        TechCode    callDBusRaucInstallBundle(const std::string& bundleName);
+        int32_t     getDBusRaucInstallProgress();
+        std::string getDBusRaucProperty(const gchar* propertyKey) const;
+        SlotStatus  getDBusRaucSlotStatus() const;
         std::string getDBusRaucBundleVersion(const std::string& input) const;
+        std::string getOsVersionId(const std::string & version_key) const;
     };
 
 } // namespace sua

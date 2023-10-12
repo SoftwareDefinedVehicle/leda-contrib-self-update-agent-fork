@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -37,32 +37,43 @@ namespace sua {
     {
         Logger::trace("Installer::start({})", input);
 
-        _installerAgent->installBundle(input);
+        if(_installerAgent->installBundle(input) == TechCode::InstallationFailed) {
+            return TechCode::InstallationFailed;
+        }
 
-        bool     installing                  = true;
-        uint32_t count                       = 0;
-        int32_t  progressPercentage          = 0;
-        int32_t  progressNotificationLimiter = 0;
+        int32_t        progressPercentage          = 0;
+        int32_t        progressNotificationLimiter = 0;
+        uint32_t       waitingTime                 = 0;              // ms
+        const uint32_t waitingTimeout              = 15 * 60 * 1000; // ms
 
-        while(installing) {
+        while(_installerAgent->installing()) {
             progressPercentage = _installerAgent->getInstallProgress();
-						std::this_thread::sleep_for(2000ms);
-            count++;
-            if(progressPercentage >= 100 || count >= 120) {
-                installing = false;
-            }
 
             if(progressPercentage >= progressNotificationLimiter) {
                 if(progressPercentage != 100) {
                     std::map<std::string, std::string> payload;
                     payload["percentage"] = std::to_string(progressPercentage);
-                    sua::Dispatcher::instance().dispatch(EVENT_INSTALLING, payload);\
+                    sua::Dispatcher::instance().dispatch(EVENT_INSTALLING, payload);
+                    progressNotificationLimiter = progressPercentage + 1;
                 }
-								progressNotificationLimiter += 10;
+            }
+
+            if(waitingTime >= waitingTimeout) {
+                Logger::error("Waiting for completion more than {} secs => assuming failed installation", waitingTimeout);
+                return TechCode::InstallationFailed;
+            }
+
+            if(progressPercentage < 100) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(_installerAgent->getProgressPollInterval()));
+                waitingTime += _installerAgent->getProgressPollInterval();
             }
         }
 
-        return TechCode::OK;
+        if(_installerAgent->succeeded()) {
+            return TechCode::OK;
+        }
+
+        return TechCode::InstallationFailed;
     }
 
 } // namespace sua

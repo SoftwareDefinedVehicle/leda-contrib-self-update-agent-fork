@@ -1,23 +1,27 @@
-add_executable(TestSDVSelfUpdateAgent
+add_executable(TestSelfUpdateAgent
     TestDispatcher.cpp
+    TestDownloader.cpp
     TestFSM.cpp
-    TestMqttMessagingProtocolYAML.cpp
+    TestLogger.cpp
     TestMqttMessagingProtocolJSON.cpp
+    TestSelfUpdateScenarios.cpp
+    TestServerAddressParser.cpp
+    TestStateFactory.cpp
     Utils.cpp
 )
 
 include_directories(
     ../src
     ${CMAKE_SOURCE_DIR}/3rdparty/spdlog/include
+    ${CMAKE_SOURCE_DIR}/3rdparty/nlohmann-json/include
 )
 
 target_link_libraries(
-    TestSDVSelfUpdateAgent
+    TestSelfUpdateAgent
     sua
     curl_lib
     paho-mqttpp3
     paho-mqtt3a
-    mini-yaml
     gio_lib
     gobject_lib
     gmodule_lib
@@ -31,4 +35,4 @@ target_link_libraries(
     gmock
 )
 
-install(TARGETS TestSDVSelfUpdateAgent RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/utest)
+install(TARGETS TestSelfUpdateAgent RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/utest)

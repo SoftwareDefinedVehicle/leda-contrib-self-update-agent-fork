@@ -28,8 +28,12 @@ COPY CMakeLists.txt /work/CMakeLists.txt
 RUN cd /work \
     && mkdir -p build_arm64/3rdparty/openssl \
     && mkdir -p dist_arm64 \
-    && ./scripts/build_openssl_arm64.sh > /dev/null \
-    && ./scripts/build_glib_arm64.sh > /dev/null \
+    && ./scripts/build_openssl_arm64.sh > /dev/null
+
+RUN cd /work \
+    && ./scripts/build_glib_arm64.sh > /dev/null
+
+RUN cd /work \
     && cd build_arm64 \
     && cmake \
         -DCMAKE_INSTALL_PREFIX=../dist_arm64 \
@@ -39,29 +43,43 @@ RUN cd /work \
         -DCMAKE_BUILD_TYPE="Release" \
         -DSUA_BUILD_NUMBER=$GITHUB_RUN_NUMBER \
         -DSUA_COMMIT_HASH=$GITHUB_COMMIT_HASH \
-        .. \
-    && make \
-    && make install
+        ..
+
+RUN cd /work \
+    && cd build_arm64 \
+    && make -j
+
+RUN cd /work \
+    && cd build_arm64 \
+    && make install/strip
+
+RUN cd /work \
+    && aarch64-linux-gnu-strip dist_arm64/lib/lib* \
+    && aarch64-linux-gnu-strip /work/build_arm64/glib/gio/libgio-2.0.so.0 \
+    && aarch64-linux-gnu-strip /work/build_arm64/glib/gobject/libgobject-2.0.so.0 \
+    && aarch64-linux-gnu-strip /work/build_arm64/glib/glib/libglib-2.0.so.0 \
+    && aarch64-linux-gnu-strip /work/build_arm64/glib/gmodule/libgmodule-2.0.so.0 \
+    && aarch64-linux-gnu-strip /work/build_arm64/glib/subprojects/libffi/src/libffi.so.7 \
+    && aarch64-linux-gnu-strip /work/build_arm64/glib/subprojects/zlib-1.2.11/libz.so
 
 #Define RUNTIME environment, the final image
 FROM --platform=${TARGETPLATFORM} scratch as runtime
 ARG TARGETPLATFORM
 COPY --from=build /work/dist_arm64/bin/sdv-self-update-agent /sua/bin/sdv-self-update-agent
-COPY --from=build /work/dist_arm64/lib/libpaho-mqttpp3.so.1 /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libpaho-mqtt3a.so.1 /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libpaho-mqtt3c.so.1 /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libmini-yaml.so /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libcurl.so     /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libcrypto.so.3 /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libssl.so.3    /sua/lib/
-COPY --from=build /work/dist_arm64/lib/libsua.so      /sua/lib/
+COPY --from=build /work/dist_arm64/lib/libpaho-mqttpp3.so.1  /sua/lib/
+COPY --from=build /work/dist_arm64/lib/libpaho-mqtt3a.so.1   /sua/lib/
+COPY --from=build /work/dist_arm64/lib/libpaho-mqtt3c.so.1   /sua/lib/
+COPY --from=build /work/dist_arm64/lib/libcurl.so.4.8.0      /sua/lib/libcurl.so.4
+COPY --from=build /work/dist_arm64/lib/libcrypto.so.3        /sua/lib/
+COPY --from=build /work/dist_arm64/lib/libssl.so.3           /sua/lib/
+COPY --from=build /work/dist_arm64/lib/libsua.so             /sua/lib/
 COPY --from=build /work/build_arm64/glib/gio/libgio-2.0.so.0          /sua/lib/
 COPY --from=build /work/build_arm64/glib/gobject/libgobject-2.0.so.0  /sua/lib/
 COPY --from=build /work/build_arm64/glib/glib/libglib-2.0.so.0        /sua/lib/
-COPY --from=build /work/build_arm64/glib/gmodule/libgmodule-2.0.so.0           /sua/lib/
-COPY --from=build /work/build_arm64/glib/subprojects/libffi/src/libffi.so.7    /sua/lib/
-COPY --from=build /work/build_arm64/glib/subprojects/pcre2-10.40/libpcre2-8.so /sua/lib/
-COPY --from=build /work/build_arm64/glib/subprojects/zlib-1.2.11/libz.so       /sua/lib/
+COPY --from=build /work/build_arm64/glib/gmodule/libgmodule-2.0.so.0            /sua/lib/
+COPY --from=build /work/build_arm64/glib/subprojects/libffi/src/libffi.so.7     /sua/lib/
+COPY --from=build /work/build_arm64/glib/subprojects/zlib-1.2.11/libz.so        /sua/lib/
+COPY --from=build /work/build_arm64/glib/subprojects/proxy-libintl/libintl.so.8 /sua/lib/
 COPY --from=build /etc/ssl/certs /etc/ssl/certs/
 COPY --from=build /usr/share/ca-certificates /usr/share/ca-certificates
 COPY --from=build /usr/aarch64-linux-gnu/lib/ld-linux-aarch64.so.1 /lib/ld-linux-aarch64.so.1

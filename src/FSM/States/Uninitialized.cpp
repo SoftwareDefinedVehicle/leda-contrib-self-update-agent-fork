@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ namespace sua {
 
     void Uninitialized::onEnter(Context& ctx)
     {
-        ctx.currentState.version = ctx.installerAgent->getBundleVersion();
+        ctx.currentState.version = ctx.installerAgent->getBootedVersion();
         Logger::info("System version (slot): '{}'", ctx.currentState.version);
     }
 

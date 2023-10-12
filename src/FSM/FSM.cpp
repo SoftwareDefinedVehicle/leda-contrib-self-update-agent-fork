@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ namespace sua {
 
     std::string FSM::activeState() const
     {
+        assert(_currentState != nullptr);
+
         return _currentState->name();
     }
 
@@ -71,7 +73,9 @@ namespace sua {
             }
 
             if(t.output == FotaEvent::NotUsed) {
-                transitTo(t.to);
+                if(activeState() != t.to) {
+                    transitTo(t.to);
+                }
                 break;
             }
 
@@ -81,7 +85,9 @@ namespace sua {
             }
 
             if(t.output == output) {
-                transitTo(t.to);
+                if(activeState() != t.to) {
+                    transitTo(t.to);
+                }
                 break;
             }
         }

@@ -1,4 +1,4 @@
-#    Copyright 2022 Contributors to the Eclipse Foundation
+#    Copyright 2023 Contributors to the Eclipse Foundation
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -39,16 +39,17 @@ runs:
 
   - name: Install tools
     run: |
+      sudo echo RESET grub-efi/install_devices | sudo debconf-communicate grub-pc
       sudo apt-get install apt-transport-https --yes
       sudo apt-get -y update
       sudo apt-get -y upgrade
       sudo apt-get -y install autoconf binutils cmake file \
-      gcc g++ git libtool make \
-      build-essential libcurl4-openssl-dev \
-      binutils-aarch64-linux-gnu gcc-9-aarch64-linux-gnu g++-9-aarch64-linux-gnu \
-      python3 python3-pip python3-setuptools python3-wheel ninja-build python3-pip \
-      libselinux1-dev libmount-dev libmount1 libblkid-dev
-      pip3 install meson
+        gcc g++ git libtool make gcovr \
+        build-essential libcurl4-openssl-dev \
+        binutils-aarch64-linux-gnu gcc-9-aarch64-linux-gnu g++-9-aarch64-linux-gnu \
+        python3 python3-pip python3-setuptools python3-wheel ninja-build python3-pip \
+        libselinux1-dev libmount-dev libmount1 libblkid-dev mosquitto mosquitto-clients
+        pip3 install meson
     shell: bash
 
   - name: Build for ${{ inputs.arch }}
@@ -62,16 +63,138 @@ runs:
         -DCMAKE_TOOLCHAIN_FILE=../cmake/linux/${{ matrix.arch }}/toolchain.cmake \
         -DOPENSSL_ROOT_DIR=../build_${{ matrix.arch }} \
         -DOPENSSL_CRYPTO_LIBRARY=../build_${{ matrix.arch }}/lib/libcrypto.so \
-        -DSUA_BUILD_NUMBER=${{ inputs.run_number }} ..
-      make
+        -DSUA_BUILD_NUMBER=${{ inputs.run_number }} \
+        -DSUA_BUILD_TESTS=YES \
+        -DSUA_MEASURE_CODE_COVERAGE=NO \
+        ..
+      make -j
+      make install/strip
+    shell: bash
+
+  - name: Strip binaries for amd64
+    if: ${{ inputs.arch == 'amd64' }}
+    run: |
+      strip dist_${{ inputs.arch }}/lib/lib*
+    shell: bash
+
+  - name: Strip binaries for arm64
+    if: ${{ inputs.arch == 'arm64' }}
+    run: |
+      aarch64-linux-gnu-strip dist_${{ inputs.arch }}/lib/lib*
+    shell: bash
+
+  - name: Build for amd64 with code-coverage enabled
+    if: ${{ inputs.arch == 'amd64' }}
+    run: |
+      cd build_${{ inputs.arch }}
+      cmake \
+        -DCMAKE_INSTALL_PREFIX=../dist_${{ inputs.arch }}_codecov \
+        -DCMAKE_TOOLCHAIN_FILE=../cmake/linux/${{ matrix.arch }}/toolchain.cmake \
+        -DOPENSSL_ROOT_DIR=../build_${{ matrix.arch }} \
+        -DOPENSSL_CRYPTO_LIBRARY=../build_${{ matrix.arch }}/lib/libcrypto.so \
+        -DSUA_BUILD_NUMBER=${{ inputs.run_number }} \
+        -DSUA_BUILD_TESTS=YES \
+        -DSUA_MEASURE_CODE_COVERAGE=YES \
+        ..
+      make -j
       make install
     shell: bash
 
-  - name: Run unit tests
-    if: ${{ inputs.arch=='amd64' }}
+  - name: Generate SSL key and certificate
+    run: |
+      sudo mkdir -p /usr/share/ca-certificates/extra
+      sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+        -keyout /etc/ssl/private/selfupdateagent.key \
+        -out /usr/share/ca-certificates/extra/selfupdateagent.crt \
+        -subj '/CN=localhost' -extensions EXT -config utest/sua-certificate.config
+      echo -e "\nextra/selfupdateagent.crt" | sudo tee -a /etc/ca-certificates.conf > /dev/null
+      sudo update-ca-certificates
+    shell: bash
+
+  - name: Install and configure apache2
+    run: |
+      sudo apt install apache2
+      sudo a2enmod ssl
+      sudo cp utest/sua-apache2.conf /etc/apache2/sites-available/sua-apache2.conf
+      sudo a2ensite sua-apache2
+      sudo service apache2 start
+    shell: bash
+
+  - name: Generate fake bundle
+    run: |
+      head -c 1 < /dev/urandom | sudo tee /var/www/html/bundle
+    shell: bash
+
+  - name: Create /data/selfupdates
+    run: |
+      sudo mkdir -p /data/selfupdates
+      sudo chown `whoami`:`whoami` /data/selfupdates
+    shell: bash
+
+  - name: Run unit tests for amd64
+    if: ${{ inputs.arch == 'amd64' }}
     run: |
       cd dist_${{ inputs.arch }}/utest
-      ./TestSDVSelfUpdateAgent
+      LD_LIBRARY_PATH=../lib ./TestSelfUpdateAgent > ../../unit_tests_report_${{ inputs.arch }}.txt --gtest_output=xml:../../unit_tests_report_${{ inputs.arch }}.xml
+    shell: bash
+
+  - uses: uraimo/run-on-arch-action@v2
+    name: Run unit tests for arm64
+    if: ${{ inputs.arch == 'arm64' }}
+    with:
+      arch: aarch64
+      distro: ubuntu_latest
+      dockerRunArgs: |
+        --volume "${PWD}:/sua"
+        --volume "/data/selfupdates:/data/selfupdates"
+        --volume "/usr/share/ca-certificates/extra:/usr/share/ca-certificates/extra"
+        --net=host
+      shell: /bin/sh
+      install: |
+        apt-get -y update
+        apt-get -y install mosquitto-clients ca-certificates
+      run: |
+        echo "\nextra/selfupdateagent.crt" | tee -a /etc/ca-certificates.conf > /dev/null
+        update-ca-certificates
+        cd /sua/dist_arm64/utest
+        LD_LIBRARY_PATH=../lib ./TestSelfUpdateAgent > ../../unit_tests_report_arm64.txt --gtest_output=xml:../../unit_tests_report_arm64.xml
+
+  - name: Collect code-coverage for amd64
+    if: ${{ inputs.arch == 'amd64' }}
+    run: |
+      cd dist_${{ inputs.arch }}_codecov/utest
+      LD_LIBRARY_PATH=../lib ./TestSelfUpdateAgent
+    shell: bash
+
+  - name: Generate code-coverage report
+    if: ${{ (inputs.arch == 'amd64') && (success() || failure()) }}
+    run: |
+      cd dist_${{ inputs.arch }}_codecov/utest
+
+      mkdir report
+      gcovr --root ../.. --html --html-details --output report/coverage.html -e ../../3rdparty -e ../../utest -e ../../src/main.cpp
+      gcovr --root ../.. --txt --output report/coverage.txt -e ../../3rdparty -e ../../utest -e ../../src/main.cpp
+      tar -czvf ../../code-coverage.tar.gz report
+
+      echo -e "### Code-coverage summary for" ${{ inputs.arch }} "\n" >> report.md
+      echo -e "\`\`\`" >> report.md
+      cat report/coverage.txt >> report.md
+      echo -e "\n\`\`\`\n" >> report.md
+
+      cat report.md >> $GITHUB_STEP_SUMMARY
+    shell: bash
+
+  - name: Generate unit tests report for ${{ inputs.arch }}
+    if: ${{ success() || failure() }}
+    run: |
+      cd dist_${{ inputs.arch }}/utest
+
+      echo -e "### Unit tests results for" ${{ inputs.arch }} "\n" >> report.md
+      echo -e "\`\`\`" >> report.md
+      cat ../../unit_tests_report_${{ inputs.arch }}.txt >> report.md
+      echo -e "\n\`\`\`\n" >> report.md
+
+      cat report.md >> $GITHUB_STEP_SUMMARY
     shell: bash
 
   - name: Compress artifacts

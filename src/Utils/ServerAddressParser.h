@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -14,10 +14,18 @@
 //
 //    SPDX-License-Identifier: Apache-2.0
 
-#ifndef SDV_SUA_VERSION_H
-#define SDV_SUA_VERSION_H
+#ifndef SDV_SUA_SERVERADDRESSPARSER_H
+#define SDV_SUA_SERVERADDRESSPARSER_H
 
-const char * SUA_COMMIT_HASH  = "@SUA_COMMIT_HASH@";
-const char * SUA_BUILD_NUMBER = "@SUA_BUILD_NUMBER@";
+#include <string>
+
+namespace sua {
+
+    class ServerAddressParser {
+    public:
+        void parse(const std::string & address, std::string & transport, std::string & host, int & port);
+    };
+
+} // namespace sua
 
 #endif

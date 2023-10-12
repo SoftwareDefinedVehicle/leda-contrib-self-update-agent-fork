@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -14,19 +14,18 @@
 //
 //    SPDX-License-Identifier: Apache-2.0
 
-#ifndef SDV_SUA_MOCKRAUCINSTALLER_H
-#define SDV_SUA_MOCKRAUCINSTALLER_H
+#ifndef SDV_SUA_DEFAULTS_H
+#define SDV_SUA_DEFAULTS_H
 
-#include "Install/IRaucInstaller.h"
+#include <string>
 
-#include "gmock/gmock.h"
+extern const std::string SUA_DEFAULT_MQTT_PROTOCOL;
+extern const std::string SUA_DEFAULT_MQTT_HOST;
+extern const int         SUA_DEFAULT_MQTT_PORT;
+extern const std::string SUA_DEFAULT_MQTT_SERVER;
+extern const std::string SUA_DEFAULT_MODE;
+extern const std::string SUA_DEFAULT_TEMP_DIRECTORY;
+extern const std::string SUA_DEFAULT_CA_DIRECTORY;
+extern const std::string SUA_DEFAULT_CA_FILEPATH;
 
-class MockRaucInstaller : public sua::IRaucInstaller {
-public:
-    MOCK_METHOD(sua::TechCode, installBundle, (const std::string & input), (override));
-    MOCK_METHOD(int32_t, getInstallProgress, (), (override));
-    MOCK_METHOD(std::string, getBundleVersion, (), (override));
-    MOCK_METHOD(std::string, getBundleVersion, (const std::string & input), (override));
-};
-
-#endif // SDV_SUA_IRAUCINSTALLER_H
+#endif

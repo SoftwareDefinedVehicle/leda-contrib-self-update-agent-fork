@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -27,8 +27,6 @@ namespace sua {
 
     class StateFactory {
     public:
-        StateFactory() = default;
-
         template <typename T>
         void addStateT(const std::string& name)
         {

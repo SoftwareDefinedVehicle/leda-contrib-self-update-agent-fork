@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "Mqtt/IMqttMessagingProtocol.h"
 #include "Mqtt/IMqttProcessor.h"
 #include "Utils/IBundleChecker.h"
+#include "Defaults.h"
 
 #include <memory>
 
@@ -39,6 +40,9 @@ namespace sua {
         uint64_t downloadBytesDownloaded    = 0;
         int      downloadProgressPercentage = 0;
         int      installProgressPercentage  = 0;
+
+        std::string actionStatus               = "";
+        std::string actionMessage              = "";
     };
 
     struct CurrentState {
@@ -52,10 +56,20 @@ namespace sua {
         std::shared_ptr<IMqttMessagingProtocol> messagingProtocol;
         std::shared_ptr<IMqttProcessor>         mqttProcessor;
         std::shared_ptr<IBundleChecker>         bundleChecker;
-        std::string                             updatesDirectory = "/data/selfupdates";
+        std::string                             updatesDirectory = SUA_DEFAULT_TEMP_DIRECTORY;
+        std::string                             tempFileName     = "/temp_file";
+        std::string                             caDirectory      = SUA_DEFAULT_CA_DIRECTORY;
+        std::string                             caFilepath       = SUA_DEFAULT_CA_FILEPATH;
+        bool                                    downloadMode     = true;
+        bool                                    fallbackMode     = false;
 
         DesiredState desiredState;
         CurrentState currentState;
+    };
+
+    struct Command {
+        std::string activityId;
+        FotaEvent   event;
     };
 
 } // namespace sua

@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -15,21 +15,31 @@
 //    SPDX-License-Identifier: Apache-2.0
 
 #include "BundleChecker.h"
+#include "Logger.h"
 
 namespace sua {
 
-    bool
-    BundleChecker::isUpdateBundleVersionDifferent(const std::string & updateBundleVer,
-                                                  std::shared_ptr<IRaucInstaller> installer)
+    bool BundleChecker::isUpdateBundleVersionDifferent(const std::string & updateBundleVersion,
+                                                       std::shared_ptr<IRaucInstaller> installer)
     {
-        return updateBundleVer != installer->getBundleVersion();
+        std::string slotVersion = installer->getBootedVersion();
+
+        Logger::info("System version, installed: '{}'", slotVersion);
+        Logger::info("Bundle version, from file: '{}'", updateBundleVersion);
+
+        return slotVersion != updateBundleVersion;
     }
 
     bool BundleChecker::isBundleVersionConsistent(const std::string & declaredVersion,
                                                   std::shared_ptr<IRaucInstaller> installer,
-                                                  const std::string &             bundlePath)
+                                                  const std::string & bundlePath)
     {
-        return declaredVersion == installer->getBundleVersion(bundlePath);
+        std::string updateBundleVersion = installer->getBundleVersion(bundlePath);
+
+        Logger::info("Bundle version, from spec: '{}'", declaredVersion);
+        Logger::info("Bundle version, from file: '{}'", updateBundleVersion);
+
+        return declaredVersion == updateBundleVersion;
     }
 
 } // namespace sua

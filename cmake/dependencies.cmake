@@ -12,7 +12,6 @@ else ()
     )
 endif()
 
-
 add_library(ssl_lib SHARED IMPORTED)
 set_property(
     TARGET ssl_lib
@@ -55,14 +54,14 @@ set_property(
     PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/glib/subprojects/libffi/src/libffi.so
 )
 
-add_library(pcre_lib SHARED IMPORTED)
-set_property(
-    TARGET pcre_lib
-    PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/glib/subprojects/pcre2-10.40/libpcre2-8.so
-)
-
 add_library(z_lib SHARED IMPORTED)
 set_property(
     TARGET z_lib
     PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/glib/subprojects/zlib-1.2.11/libz.so
+)
+
+add_library(intl_lib SHARED IMPORTED)
+set_property(
+    TARGET intl_lib
+    PROPERTY IMPORTED_LOCATION ${CMAKE_BINARY_DIR}/glib/subprojects/proxy-libintl/libintl.so
 )

@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -20,14 +20,17 @@
 #include "TechCodes.h"
 
 #include <string>
+#include <tuple>
 
 namespace sua {
+
+    using DownloadResult = std::tuple<TechCode, std::string>;
 
     class IDownloader {
     public:
         virtual ~IDownloader() = default;
 
-        virtual TechCode start(const std::string & input) = 0;
+        virtual DownloadResult start(const std::string & input) = 0;
     };
 
 } // namespace sua

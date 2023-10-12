@@ -1,4 +1,4 @@
-//    Copyright 2022 Contributors to the Eclipse Foundation
+//    Copyright 2023 Contributors to the Eclipse Foundation
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -27,10 +27,21 @@ namespace sua {
         DummyRaucInstaller();
         ~DummyRaucInstaller();
 
+        TechCode    activateBooted() override;
+        TechCode    activateOther() override;
         TechCode    installBundle(const std::string& input) override;
+        int32_t     getProgressPollInterval() const override;
         int32_t     getInstallProgress() override;
-        std::string getBundleVersion() override;
+        SlotStatus  getSlotStatus() override;
+        std::string getBootedVersion() override;
         std::string getBundleVersion(const std::string& input) override;
+        std::string getLastError() override;
+
+        bool installing() override;
+        bool succeeded() override;
+
+    private:
+        int _progress = 0;
     };
 
 } // namespace sua
