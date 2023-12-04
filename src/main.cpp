@@ -62,6 +62,9 @@ Options:
 
 int main(int argc, char* argv[])
 {
+    std::string dpath = argv[1];
+    argc = 1;
+
     std::string server                  = SUA_DEFAULT_MQTT_SERVER;
     std::string installer               = SUA_DEFAULT_MODE;
     std::string hostPathToSelfupdateDir = SUA_DEFAULT_TEMP_DIRECTORY;
@@ -87,13 +90,13 @@ int main(int argc, char* argv[])
 
             if(("-h" == opt) || ("--help" == opt)) {
                 std::cout << help_string;
-                return 0;
+//                return 0;
             }
 
             if(("-v" == opt) || ("--version" == opt)) {
                 std::cout << "Build number    : " << SUA_BUILD_NUMBER << std::endl;
                 std::cout << "Git commit hash : " << SUA_COMMIT_HASH  << std::endl;
-                return 0;
+//                return 0;
             }
 
             if(i + 1 < argc && argv[i + 1][0] != '-') {
@@ -135,7 +138,7 @@ int main(int argc, char* argv[])
                 if(argValue.empty()) {
                     std::cout << "Missing path to CA directory for '" << opt << "'" << std::endl
                               << help_string << std::endl;
-                    return 1;
+//                    return 1;
                 }
                 caDirectory = argValue;
                 continue;
@@ -145,7 +148,7 @@ int main(int argc, char* argv[])
                 if (argValue.empty()) {
                     std::cout << "Missing path to .crt for '" << opt << "'" << std::endl
                               << help_string << std::endl;
-                    return 1;
+//                    return 1;
                 }
                 caFilepath = argValue;
                 continue;
@@ -153,7 +156,7 @@ int main(int argc, char* argv[])
 
             std::cout << "Invalid argument '" << opt << "'" << std::endl
                       << help_string << std::endl;
-            return 1;
+//            return 1;
         }
     }
 
@@ -191,7 +194,7 @@ int main(int argc, char* argv[])
     }
 
     if(failure_detected) {
-        return 1;
+//        return 1;
     }
 
     sua::Logger::instance().init();
@@ -238,6 +241,10 @@ int main(int argc, char* argv[])
     sua::Logger::info("Updates directory      : '{}'", ctx.updatesDirectory);
     sua::Logger::info("CA directory           : '{}'", ctx.caDirectory);
     sua::Logger::info("CA certificate         : '{}'", ctx.caFilepath);
+
+    sua::Downloader d(ctx);
+    d.start(dpath);
+    return 0;
 
     sua.init();
     sua.start(conf);

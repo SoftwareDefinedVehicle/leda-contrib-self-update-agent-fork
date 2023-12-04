@@ -65,7 +65,8 @@ namespace {
             payload["downloaded"] = std::to_string(downloaded);
             payload["total"     ] = std::to_string(total);
             payload["percentage"] = std::to_string(progress);
-            sua::Dispatcher::instance().dispatch(sua::Downloader::EVENT_DOWNLOADING, payload);
+            //sua::Dispatcher::instance().dispatch(sua::Downloader::EVENT_DOWNLOADING, payload);
+            sua::Logger::trace("progress: {}", progress);
             progressNotificationLimiter += 10;
         }
 
@@ -163,6 +164,7 @@ namespace {
         curl_easy_setopt(h, CURLOPT_PROGRESSFUNCTION, progress_callback);
         curl_easy_setopt(h, CURLOPT_NOPROGRESS, 0);
         curl_easy_setopt(h, CURLOPT_PROTOCOLS_STR, "https");
+        curl_easy_setopt(h, CURLOPT_VERBOSE, 1L);
         CURLcode res = curl_easy_perform(h);
 
         const auto curl_status_message = fmt::format("curl_easy_perform ended with code = {} ({})", res, curl_easy_strerror(res));
